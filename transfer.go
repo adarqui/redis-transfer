@@ -1,34 +1,34 @@
 package main
 
 import (
+	"github.com/cheggaaa/pb"
+	"io/ioutil"
 	"log"
+	"menteslibres.net/gosexy/redis"
 	"os"
 	"strconv"
 	"strings"
-	"io/ioutil"
-	"menteslibres.net/gosexy/redis"
-	"github.com/cheggaaa/pb"
 )
 
 type Redis_Pipe struct {
-	from *Redis_Server
-	to *Redis_Server
+	from    *Redis_Server
+	to      *Redis_Server
 	threads int
-	keys string
+	keys    string
 }
 
 type Redis_Server struct {
-	r *redis.Client
+	r    *redis.Client
 	host string
 	port int
-	db string
+	db   string
 	user string
 	pass string
 }
 
 type Op struct {
-	str string
-	code uint8
+	str   string
+	code  uint8
 	repch chan bool
 }
 
@@ -74,8 +74,7 @@ func rhost_copy(r *Redis_Server) (*Redis_Server, error) {
 	return rnew, nil
 }
 
-
-func New (from, to, keys string, threads int) (*Redis_Pipe) {
+func New(from, to, keys string, threads int) *Redis_Pipe {
 	pipe := new(Redis_Pipe)
 
 	pipe.from, _ = rhost_split(from)
@@ -89,7 +88,7 @@ func New (from, to, keys string, threads int) (*Redis_Pipe) {
 	return pipe
 }
 
-func (pipe *Redis_Pipe) TransferThread (i int, ch chan Op) {
+func (pipe *Redis_Pipe) TransferThread(i int, ch chan Op) {
 	log.Printf("transfer thread #%d launched\n", i)
 	for m := range ch {
 		if m.code == 1 {
@@ -111,8 +110,7 @@ func (pipe *Redis_Pipe) TransferThread (i int, ch chan Op) {
 	}
 }
 
-
-func (serv *Redis_Server) ConnectOne() (error) {
+func (serv *Redis_Server) ConnectOne() error {
 	err := serv.r.ConnectNonBlock(serv.host, uint(serv.port))
 	if err != nil {
 		log.Fatal("ConnectOne: Connecting to host/port: ", err)
@@ -136,7 +134,7 @@ func (serv *Redis_Server) ConnectOne() (error) {
 	return nil
 }
 
-func (pipe *Redis_Pipe) Connect() (error) {
+func (pipe *Redis_Pipe) Connect() error {
 	err := pipe.from.ConnectOne()
 	if err != nil {
 		log.Fatal("Connect: Connecting to \"from\" host/port: ", err)
@@ -148,11 +146,11 @@ func (pipe *Redis_Pipe) Connect() (error) {
 	return nil
 }
 
-func (pipe *Redis_Pipe) Init () ([]Redis_Pipe, chan Op) {
+func (pipe *Redis_Pipe) Init() ([]Redis_Pipe, chan Op) {
 
 	pipes := make([]Redis_Pipe, pipe.threads)
 
-	for i := 0 ; i < pipe.threads ; i++ {
+	for i := 0; i < pipe.threads; i++ {
 		pipes[i].keys = pipe.keys
 		pipes[i].from, _ = rhost_copy(pipe.from)
 		pipes[i].to, _ = rhost_copy(pipe.to)
@@ -163,7 +161,7 @@ func (pipe *Redis_Pipe) Init () ([]Redis_Pipe, chan Op) {
 
 	ch := make(chan Op, pipe.threads)
 
-	for i := 0 ; i < pipe.threads ; i++ {
+	for i := 0; i < pipe.threads; i++ {
 		_i := i
 		go pipes[_i].TransferThread(_i, ch)
 	}
@@ -171,7 +169,7 @@ func (pipe *Redis_Pipe) Init () ([]Redis_Pipe, chan Op) {
 	return pipes, ch
 }
 
-func (pipe *Redis_Pipe) KeysFile() ([]string) {
+func (pipe *Redis_Pipe) KeysFile() []string {
 	blob, err := ioutil.ReadFile(pipe.keys)
 	if err != nil {
 		log.Fatal("KeysFile: error reading keys file: ", err)
@@ -180,7 +178,7 @@ func (pipe *Redis_Pipe) KeysFile() ([]string) {
 	return lines
 }
 
-func (pipe *Redis_Pipe) KeysRedis() ([]string) {
+func (pipe *Redis_Pipe) KeysRedis() []string {
 	keys, err := pipe.from.r.Keys(pipe.keys)
 	if err != nil {
 		log.Fatal("KeysRedis: error obtaining keys list from redis: ", err)
@@ -188,7 +186,7 @@ func (pipe *Redis_Pipe) KeysRedis() ([]string) {
 	return keys
 }
 
-func (pipe *Redis_Pipe) Keys () ([]string) {
+func (pipe *Redis_Pipe) Keys() []string {
 	_, err := os.Stat(pipe.keys)
 
 	var keys []string
@@ -196,7 +194,7 @@ func (pipe *Redis_Pipe) Keys () ([]string) {
 		keys = pipe.KeysFile()
 	} else {
 		keys = pipe.KeysRedis()
-		
+
 	}
 
 	return keys
@@ -233,13 +231,13 @@ func main() {
 	bar.ShowTimeLeft = true
 	bar.ShowSpeed = true
 
-	for _,v := range(all_keys) {
+	for _, v := range all_keys {
 		op := Op{v, 0, nil}
 		ch <- op
 		bar.Increment()
 	}
 
-	for i := 0 ; i < pipe.threads ; i++  {
+	for i := 0; i < pipe.threads; i++ {
 		repch := make(chan bool, 1)
 		op := Op{"", 1, repch}
 		ch <- op
