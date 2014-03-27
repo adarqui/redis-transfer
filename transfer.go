@@ -33,7 +33,7 @@ type Op struct {
 }
 
 func usage() {
-	log.Fatal("usage: ./transfer <from_redis_host:port[:dbNum[:pass]]> <to_redis_host:port[:dbNum[:pass]]> <key regex or input file full of keys> <number of threads>")
+	log.Fatal("usage: ./transfer <from_redis_host:port[:dbNum[:pass]]> <to_redis_host:port[:dbNum[:pass]]> <key-regex or input-file-full-of-keys> <number-of-concurrent-threads>")
 }
 
 func rhost_split(host string) (*Redis_Server, error) {

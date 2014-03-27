@@ -4,7 +4,7 @@ What it does?
 
 Usage:
 $ ./redis-transfer
-2014/03/26 23:19:03 usage: ./transfer <from_redis_host:port[:dbNum:pass]> <to_redis_host:port[:dbNum:pass]> <key-regex or input-file-full-of-keys> <number-of-threads>
+2014/03/26 23:19:03 usage: ./transfer <from_redis_host:port[:dbNum[:pass]]> <to_redis_host:port[:dbNum[:pass]]> <key-regex or input-file-full-of-keys> <number-of-threads>
 
 
 Example usage:
