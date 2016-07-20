@@ -4,6 +4,7 @@ build: deps
 deps:
 	go get github.com/cheggaaa/pb
 	go get gopkg.in/redis.v4
+	go get menteslibres.net/gosexy/redis
 
 test:
 	go test
