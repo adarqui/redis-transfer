@@ -2,7 +2,6 @@ package main
 
 import (
 	goredis "gopkg.in/redis.v4"
-	"menteslibres.net/gosexy/redis"
 	"sync"
 )
 
@@ -14,7 +13,6 @@ type Redis_Pipe struct {
 }
 
 type Redis_Server struct {
-	r      *redis.Client
 	client *goredis.Client
 	host   string
 	port   int
@@ -23,8 +21,8 @@ type Redis_Server struct {
 }
 
 const (
-  OP_NOP = 0
-  OP_DIE = iota
+	OP_NOP = 0
+	OP_DIE = iota
 )
 
 type Op struct {
