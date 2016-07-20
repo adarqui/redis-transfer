@@ -49,7 +49,7 @@ usage: redis-transfer <from_redis> <to_redis> <regex_or_input_file> <concurrent_
 
 Note: Experiment performed in ~2013. Go has made significant improvements since then. Expect better results.
 
-The example progress bar output below illustrates the difference we see specific to the concurrency level. Transferring 5 million keys using 40 concurrent threads took approximately 10 minutes in this experiment. Not surprisingly, using only one thread took approximately 40 minutes.
+The example progress bar output below illustrates the difference we see specific to the concurrency level. Transferring 5 million keys using 40 concurrent threads between two servers (across the internet) took approximately 10 minutes in this experiment. Not surprisingly, using only one thread took approximately 40 minutes.
 
 ### 40 Threads
 ```
