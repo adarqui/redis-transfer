@@ -1,44 +1,67 @@
-What it does?
-"Parallelizes" transferring of redis keys from a source to a target host. You can specify what keys to transfer via regex ("*", "bleh:*") or file ("keys.txt","/tmp/keys.txt"). It will then spawn N go routines which pull (dump) from the source redis & immediately push (restore) to the target redis.
+# redis-transfer
+
+Concurrent bulk transfer of keys from one redis server to another.
+
+## What it does?
+
+Parallelizes the transfer of redis keys from a source to a target redis server. You can specify what keys to transfer via regex or from an input file which contains a list of keys. Redis-transfer will then spawn N go routines (threads) which pull (dump) keys from the source redis server & immediately push (restore) those keys to the target redis. As a bonus, gives you a pretty progress bar.
 
 
-Usage:
-$ ./redis-transfer
-2014/03/26 23:19:03 usage: ./transfer <from_redis_host:port[:dbNum[:pass]]> <to_redis_host:port[:dbNum[:pass]]> <key-regex or input-file-full-of-keys> <number-of-threads>
+## Usage
+
+```
+ $ ./redis-transfer
+usage: redis-transfer <from_redis> <to_redis> <regex_or_input_file> <concurrent_threads>
+
+ * There are two redis connection formats to choose from:
+   - host:port:[db[:password]]
+   - redis://user:password@host:port?db=number
+
+ * regex_or_input_file:
+   - To transfer only those keys that match a regex pattern:
+     some_key_prefix*
+     *some_key_suffix
+     prefix*something*suffix
+     etc..
+
+   - To transfer keys from an input file, simply list keys in a file, separated by newlines
+     key1
+     keyN
+
+ * concurrent_threads:
+   - This should be a number between 1 and (max_cpu's*10)
+     You can play around with this to find the optimal setting. I generally use 50 on my 8 core box.
+
+ * examples:
+   redis-transfer localhost:6379 remotehost:6379:1:password "migrate:*" 50
+   redis-transfer redis://localhost:6379 redis://user:password@remotehost?db=1 "migrate:*" 50
+```
 
 
-Example usage:
-./redis-transfer localhost:6379 localhost:6370:0:password "*" 40
-./redis-transfer localhost:6379:2 localhost:6370:0 /tmp/slow-keys.txt 1
 
+## Example benchmark output
 
-Beast progress bar courtesy of cheggaaa:
-80973 / 5000000 [>---------------------------------------------] 1.62 % 8066/s 10m9s
+Transferring 5 million keys using 40 concurrent threads in ~10 minutes.
 
-
-Example benchmark: Transferring 5,000,000 keys
-40 threads: ~10m
+```
 47393 / 5000000 [=>---------------------------------------------------------------------------------------------------------------------------------] 0.95 % 8061/s 10m14
 10 threads:
 108367 / 5000000 [==>-------------------------------------------------------------------------------------------------------------------------------] 2.17 % 6457/s 12m37
 1 thread:
 4124 / 5000000 [>-----------------------------------------------------------------------------------------------------------------------------------] 0.08 % 2059/s 40m26
-
-Sexy.
-
-
-
-Use with caution:
-I've tested it with redis's of ~5 mil keys (~10 G mem) etc. If somehow the program terminates early (which hasn't happened for me), you can continue progress by:
-load keys from redis_source into a set (SADD each key), set1 = source
-repeat for keys on redis_target, set2 = target
-redis-cli diff set1 set2 > remaining.txt
-pass remaining.txt to redis-transfer
+```
 
 
 
-Todo:
-Add an <opts> param for flags. We would then be able to pass '-o' which would DEL a key if it already exists (which will allow RESTORE to overwrite a key). etcetc.
+## Todo
+
+- Add an <opts> param for flags.
+- With <opts>, ability to pass '--replace' which would replace existing keys.
 
 
-pc!
+
+## Contributing
+
+Pull requests welcome!
+
+See [CONTRIBUTORS](CONTRIBUTORS.md).
