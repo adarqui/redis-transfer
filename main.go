@@ -51,14 +51,14 @@ func main() {
 	}()
 
 	for v := range keyChan {
-		op := Op{string(v), 0, nil}
+		op := Op{string(v), OP_NOP, nil}
 		ch <- op
 		bar.Increment()
 	}
 
 	for i := 0; i < pipe.threads; i++ {
 		repch := make(chan bool, 1)
-		op := Op{"", 1, repch}
+		op := Op{"", OP_DIE, repch}
 		ch <- op
 		_ = <-repch
 	}

@@ -26,7 +26,7 @@ func New(from, to, keys string, threads int) *Redis_Pipe {
 
 func (pipe *Redis_Pipe) TransferThread(i int, ch chan Op) {
 	for m := range ch {
-		if m.code == 1 {
+		if m.code == OP_DIE {
 			// force children to exit, just reply true & vaporize this go routine
 			m.repch <- true
 			return

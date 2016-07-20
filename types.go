@@ -22,6 +22,11 @@ type Redis_Server struct {
 	pass   string
 }
 
+const (
+  OP_NOP = 0
+  OP_DIE = iota
+)
+
 type Op struct {
 	str   string
 	code  uint8
