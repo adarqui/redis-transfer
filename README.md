@@ -70,8 +70,8 @@ The example progress bar output below illustrates the difference we see specific
 
 ## Todo
 
-- Add an <opts> param for flags.
-- With <opts>, ability to pass '--replace' which would replace existing keys.
+- Add optional params via flags.
+- With flags, add the ability to pass '--replace' which would replace existing keys.
 - Deeper refactor.
 
 
