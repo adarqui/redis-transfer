@@ -366,5 +366,6 @@ func main() {
 
 	wg.Wait()
 
-	bar.FinishPrint("Done.")
+	bar.Finish()
+  log.Println("Done.")
 }
