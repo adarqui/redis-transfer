@@ -45,32 +45,33 @@ func (pipe *Redis_Pipe) TransferThread(i int, ch chan Op) {
 	}
 }
 
-func (serv *Redis_Server) ConnectOne() error {
+func (serv *Redis_Server) Connect() error {
 	err := serv.r.ConnectNonBlock(serv.host, uint(serv.port))
 	if err != nil {
-		log.Fatal("ConnectOne: Connecting to host/port: ", err)
+		log.Fatal("Connect: Connecting to host/port: ", err)
 	}
 	if serv.pass != "" {
 		_, err = serv.r.Auth(serv.pass)
 		if err != nil {
-			log.Fatal("ConnectOne: pass incorrect: ", err)
+			log.Fatal("Connect: pass incorrect: ", err)
 		}
 	}
 	_, err = serv.r.Select(int64(serv.db))
 	if err != nil {
-		log.Fatal("ConnectOne: select db failure: ", err)
+		log.Fatal("Connect: select db failure: ", err)
 	}
 	return nil
 }
 
-func (pipe *Redis_Pipe) Connect() error {
-	err := pipe.from.ConnectOne()
+// Create a "pipe" between both redis servers
+func (pipe *Redis_Pipe) ConnectBoth() error {
+	err := pipe.from.Connect()
 	if err != nil {
-		log.Fatal("Connect: Connecting to \"from\" host/port: ", err)
+		log.Fatal("ConnectBoth: Connecting to \"from\" host/port: ", err)
 	}
-	err = pipe.to.ConnectOne()
+	err = pipe.to.Connect()
 	if err != nil {
-		log.Fatal("Connect: Connecting to \"to\" host/port: ", err)
+		log.Fatal("ConnectBoth: Connecting to \"to\" host/port: ", err)
 	}
 	return nil
 }
@@ -85,7 +86,7 @@ func (pipe *Redis_Pipe) Init() ([]Redis_Pipe, chan Op) {
 		pipes[i].to, _ = rhost_copy(pipe.to)
 
 		/* connect to both redii */
-		pipes[i].Connect()
+		pipes[i].ConnectBoth()
 	}
 
 	ch := make(chan Op, pipe.threads)
