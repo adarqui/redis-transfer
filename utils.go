@@ -54,6 +54,7 @@ func parseRedisURI(s string) (server *Redis_Server, err error) {
 	return &Redis_Server{host: host, port: port, db: db, pass: password}, nil
 }
 
+// source: https://gobyexample.com/collection-functions
 func filter(vs []string, f func(string) bool) []string {
 	vsf := make([]string, 0)
 	for _, v := range vs {
