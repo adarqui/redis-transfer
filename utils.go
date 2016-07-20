@@ -53,3 +53,13 @@ func parseRedisURI(s string) (server *Redis_Server, err error) {
 
 	return &Redis_Server{host: host, port: port, db: db, pass: password}, nil
 }
+
+func filter(vs []string, f func(string) bool) []string {
+	vsf := make([]string, 0)
+	for _, v := range vs {
+		if f(v) {
+			vsf = append(vsf, v)
+		}
+	}
+	return vsf
+}
