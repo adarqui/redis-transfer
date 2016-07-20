@@ -11,30 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 )
-
-type Redis_Pipe struct {
-	from    *Redis_Server
-	to      *Redis_Server
-	threads int
-	keys    string
-}
-
-type Redis_Server struct {
-	r      *redis.Client
-	client *goredis.Client
-	host   string
-	port   int
-	db     int
-	pass   string
-}
-
-type Op struct {
-	str   string
-	code  uint8
-	repch chan bool
-}
 
 func parseURI(host string) (server *Redis_Server, err error) {
 	if strings.HasPrefix(host, "redis://") {
@@ -203,10 +180,6 @@ func (pipe *Redis_Pipe) KeysFile() chan redisKey {
 	return keyChan
 }
 
-type redisKey string
-
-var totalKeyCount chan int
-
 func init() {
 	totalKeyCount = make(chan int, 1)
 }
@@ -279,8 +252,6 @@ func (pipe *Redis_Pipe) Keys() chan redisKey {
 	return keys
 }
 
-var wg sync.WaitGroup
-
 func main() {
 
 	if len(os.Args) < 5 {
@@ -336,5 +307,5 @@ func main() {
 	wg.Wait()
 
 	bar.Finish()
-  log.Println("Done.")
+	log.Println("Done.")
 }
