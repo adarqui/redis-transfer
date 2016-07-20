@@ -139,7 +139,7 @@ func New(from, to, keys string, threads int) *Redis_Pipe {
 
 	pipe.threads = threads
 
-	log.Printf("from=%s, to=%s\n", redisToString(pipe.from), redisToString(pipe.to))
+	log.Printf("Initiating transfer from %s to %s\n", redisToString(pipe.from), redisToString(pipe.to))
 
 	return pipe
 }
