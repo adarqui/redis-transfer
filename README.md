@@ -2,9 +2,12 @@
 
 Concurrent bulk transfer of keys from one redis server to another.
 
+
+
 ## What it does?
 
 Parallelizes the transfer of redis keys from a source to a target redis server. You can specify what keys to transfer via regex or from an input file which contains a list of keys. Redis-transfer will then spawn N go routines (threads) which pull (dump) keys from the source redis server & immediately push (restore) those keys to the target redis. As a bonus, gives you a pretty progress bar.
+
 
 
 ## Usage
@@ -66,6 +69,7 @@ The example progress bar output below illustrates the difference we see specific
 
 - Add an <opts> param for flags.
 - With <opts>, ability to pass '--replace' which would replace existing keys.
+- Deeper refactor.
 
 
 
