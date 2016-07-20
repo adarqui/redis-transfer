@@ -41,14 +41,23 @@ usage: redis-transfer <from_redis> <to_redis> <regex_or_input_file> <concurrent_
 
 ## Example benchmark output
 
-Transferring 5 million keys using 40 concurrent threads in ~10 minutes.
+Note: Experiment performed in ~2013. Go has made significant improvements since then. Expect better results.
 
+The example progress bar output below illustrates the difference we see specific to the concurrency level. Transferring 5 million keys using 40 concurrent threads took approximately 10 minutes in this experiment. Not surprisingly, using only one thread took approximately 40 minutes.
+
+### 40 Threads
 ```
-47393 / 5000000 [=>---------------------------------------------------------------------------------------------------------------------------------] 0.95 % 8061/s 10m14
-10 threads:
-108367 / 5000000 [==>-------------------------------------------------------------------------------------------------------------------------------] 2.17 % 6457/s 12m37
-1 thread:
-4124 / 5000000 [>-----------------------------------------------------------------------------------------------------------------------------------] 0.08 % 2059/s 40m26
+80973 / 5000000 [>------------------------------------------------------------------------------------------] 1.62 % 8066/s 10m9s
+```
+
+### 10 Threads
+```
+108367 / 5000000 [==>---------------------------------------------------------------------------------------] 2.17 % 6457/s 12m37
+```
+
+### 1 Thread
+```
+4124 / 5000000 [>-------------------------------------------------------------------------------------------] 0.08 % 2059/s 40m26
 ```
 
 
