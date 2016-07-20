@@ -2,8 +2,8 @@
 
 Concurrent bulk transfer of keys from one redis server to another.
 
-![](./assets/gopher.png =20x20)
-![](./assets/redis.png =20x20)
+![](./assets/gopher.png)
+![](./assets/redis.png)
 
 
 
