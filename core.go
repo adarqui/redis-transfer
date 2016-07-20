@@ -53,7 +53,7 @@ func (serv *Redis_Server) Connect() error {
 	if serv.pass != "" {
 		_, err = serv.r.Auth(serv.pass)
 		if err != nil {
-			log.Fatal("Connect: pass incorrect: ", err)
+			log.Fatal("Connect: password incorrect: ", err)
 		}
 	}
 	_, err = serv.r.Select(int64(serv.db))
