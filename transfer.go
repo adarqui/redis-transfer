@@ -1,13 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"github.com/cheggaaa/pb"
+	goredis "gopkg.in/redis.v4"
 	"io/ioutil"
 	"log"
 	"menteslibres.net/gosexy/redis"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type Redis_Pipe struct {
@@ -18,12 +22,12 @@ type Redis_Pipe struct {
 }
 
 type Redis_Server struct {
-	r    *redis.Client
-	host string
-	port int
-	db   string
-	user string
-	pass string
+	r      *redis.Client
+	client *goredis.Client
+	host   string
+	port   int
+	db     int
+	pass   string
 }
 
 type Op struct {
@@ -34,6 +38,15 @@ type Op struct {
 
 func usage() {
 	log.Fatal("usage: ./transfer <from_redis_host:port[:dbNum[:pass]]> <to_redis_host:port[:dbNum[:pass]]> <key-regex or input-file-full-of-keys> <number-of-concurrent-threads>")
+}
+
+func parseURI(host string) (server *Redis_Server, err error) {
+	if strings.HasPrefix(host, "redis://") {
+		server, err = parseRedisURI(host)
+	} else {
+		server, err = rhost_split(host)
+	}
+	return
 }
 
 func rhost_split(host string) (*Redis_Server, error) {
@@ -54,7 +67,11 @@ func rhost_split(host string) (*Redis_Server, error) {
 
 	len_tokens := len(tokens)
 	if len_tokens > 2 {
-		serv.db = tokens[2]
+		db, err := strconv.Atoi(tokens[2])
+		if err != nil {
+			log.Fatal("rhost_split: db conversion error: ", err)
+		}
+		serv.db = db
 	}
 
 	if len_tokens > 3 {
@@ -65,31 +82,42 @@ func rhost_split(host string) (*Redis_Server, error) {
 }
 
 func rhost_copy(r *Redis_Server) (*Redis_Server, error) {
-	rnew := new(Redis_Server)
-	rnew.r = redis.New()
-	rnew.host = r.host
-	rnew.port = r.port
-	rnew.db = r.db
-	rnew.pass = r.pass
-	return rnew, nil
+	opts := &goredis.Options{
+		Addr:     fmt.Sprintf("%s:%d", r.host, r.port),
+		Password: r.pass,
+		DB:       r.db,
+	}
+	c := goredis.NewClient(opts)
+	rs := &Redis_Server{
+		r:      redis.New(),
+		client: c,
+		host:   r.host,
+		port:   r.port,
+		db:     r.db,
+		pass:   r.pass,
+	}
+	return rs, nil
+}
+
+func redisToString(s *Redis_Server) string {
+	return fmt.Sprintf("<redis://%s:%d?db=%d>", s.host, s.port, s.db)
 }
 
 func New(from, to, keys string, threads int) *Redis_Pipe {
 	pipe := new(Redis_Pipe)
 
-	pipe.from, _ = rhost_split(from)
-	pipe.to, _ = rhost_split(to)
+	pipe.from, _ = parseURI(from)
+	pipe.to, _ = parseURI(to)
 	pipe.keys = keys
 
 	pipe.threads = threads
 
-	log.Printf("from=<%s:%i>, to=<%s:%i>\n", pipe.from.host, pipe.from.port, pipe.to.host, pipe.to.port)
+	log.Printf("from=%s, to=%s\n", redisToString(pipe.from), redisToString(pipe.to))
 
 	return pipe
 }
 
 func (pipe *Redis_Pipe) TransferThread(i int, ch chan Op) {
-	log.Printf("transfer thread #%d launched\n", i)
 	for m := range ch {
 		if m.code == 1 {
 			// force children to exit, just reply true & vaporize this go routine
@@ -121,15 +149,9 @@ func (serv *Redis_Server) ConnectOne() error {
 			log.Fatal("ConnectOne: pass incorrect: ", err)
 		}
 	}
-	if serv.db != "" {
-		dbnum, err2 := strconv.Atoi(serv.db)
-		if err2 != nil {
-			log.Fatal("ConnectOne: db number conversion error: ", err2)
-		}
-		_, err = serv.r.Select(int64(dbnum))
-		if err != nil {
-			log.Fatal("ConnectOne: select db failure: ", err)
-		}
+	_, err = serv.r.Select(int64(serv.db))
+	if err != nil {
+		log.Fatal("ConnectOne: select db failure: ", err)
 	}
 	return nil
 }
@@ -169,27 +191,85 @@ func (pipe *Redis_Pipe) Init() ([]Redis_Pipe, chan Op) {
 	return pipes, ch
 }
 
-func (pipe *Redis_Pipe) KeysFile() []string {
+func (pipe *Redis_Pipe) KeysFile() chan redisKey {
 	blob, err := ioutil.ReadFile(pipe.keys)
 	if err != nil {
 		log.Fatal("KeysFile: error reading keys file: ", err)
 	}
+	keyChan := make(chan redisKey)
 	lines := strings.Split(string(blob), "\n")
-	return lines
-}
-
-func (pipe *Redis_Pipe) KeysRedis() []string {
-	keys, err := pipe.from.r.Keys(pipe.keys)
-	if err != nil {
-		log.Fatal("KeysRedis: error obtaining keys list from redis: ", err)
+	for _, line := range lines {
+		keyChan <- redisKey(line)
 	}
-	return keys
+	return keyChan
 }
 
-func (pipe *Redis_Pipe) Keys() []string {
+type redisKey string
+
+var totalKeyCount chan int
+
+func init() {
+	totalKeyCount = make(chan int, 1)
+}
+
+func (pipe *Redis_Pipe) KeysRedis() chan redisKey {
+	keyChan := make(chan redisKey, 1000)
+	info := pipe.from.client.Info("keyspace")
+	// Sample: db0:keys=1201,expires=0,avg_ttl=0
+	keyRegex := fmt.Sprintf("db%d:keys=(\\d+)", pipe.from.db)
+	re := regexp.MustCompile(keyRegex)
+	m := re.FindStringSubmatch(info.Val())
+	if len(m) > 1 {
+		if ks, err := strconv.Atoi(m[1]); err == nil {
+			totalKeyCount <- ks
+		}
+	}
+	split := make(chan []string)
+	splitter := func() {
+		wg.Add(1)
+		defer wg.Done()
+		defer close(keyChan)
+		for ks := range split {
+			for _, k := range ks {
+				keyChan <- redisKey(k)
+			}
+		}
+	}
+
+	go splitter()
+
+	go func(c chan redisKey) {
+		wg.Add(1)
+		defer wg.Done()
+		var cursor uint64
+		var n int
+		for {
+			var keys []string
+			var err error
+			// REDIS SCAN
+			// http://redis.io/commands/scan
+			// Preferable because it doesn't lock complete database on larger keysets for 250ms+.
+			keys, cursor, err = pipe.from.client.Scan(cursor, pipe.keys, 1000).Result()
+			if err != nil {
+				log.Fatal("KeysRedis: error obtaining keys list from redis: ", err)
+			}
+			split <- keys
+
+			n += len(keys)
+			if cursor == 0 {
+				close(split)
+				break
+			}
+		}
+	}(keyChan)
+
+	return keyChan
+}
+
+func (pipe *Redis_Pipe) Keys() chan redisKey {
 	_, err := os.Stat(pipe.keys)
 
-	var keys []string
+	var keys chan redisKey
 	if err == nil {
 		keys = pipe.KeysFile()
 	} else {
@@ -199,6 +279,8 @@ func (pipe *Redis_Pipe) Keys() []string {
 
 	return keys
 }
+
+var wg sync.WaitGroup
 
 func main() {
 
@@ -221,9 +303,10 @@ func main() {
 	pipe := New(from, to, keys, threads)
 	pipes, ch := pipe.Init()
 
-	all_keys := pipes[0].Keys()
+	// Could be scan instead of blocking action w/ Keys
+	keyChan := pipes[0].Keys()
 
-	count := len(all_keys)
+	count := len(keyChan)
 	bar := pb.StartNew(count)
 	bar.ShowPercent = true
 	bar.ShowBar = true
@@ -231,8 +314,15 @@ func main() {
 	bar.ShowTimeLeft = true
 	bar.ShowSpeed = true
 
-	for _, v := range all_keys {
-		op := Op{v, 0, nil}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		t := <-totalKeyCount
+		bar.Total = int64(t)
+	}()
+
+	for v := range keyChan {
+		op := Op{string(v), 0, nil}
 		ch <- op
 		bar.Increment()
 	}
@@ -244,6 +334,7 @@ func main() {
 		_ = <-repch
 	}
 
-	bar.FinishPrint("Done.")
+	wg.Wait()
 
+	bar.FinishPrint("Done.")
 }
