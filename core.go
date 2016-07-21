@@ -41,7 +41,11 @@ func (pipe *Redis_Pipe) TransferThread(i int, ch chan Op) {
 		}
 		_, err := pipe.to.client.Restore(m.str, 0, dump.Val()).Result()
 		if err != nil {
-			log.Printf("FAIL:RESTORE:%s, %v\n", m.str, err)
+			// log.Printf("FAIL:RESTORE:%s, %v\n", m.str, err)
+			// TODO FIXME: Eventually we will provide a way of handling errors here.
+			// RESTORE errors will occur if the key already exists on the target redis server.
+			// So these errors are harmless. If we add a --replace flag, then we can also pass
+			// this attribute on to RESTORE so that keys are always overwritten.
 		}
 	}
 }
