@@ -32,49 +32,18 @@ func (pipe *Redis_Pipe) TransferThread(i int, ch chan Op) {
 			m.repch <- true
 			return
 		}
-		data, err := pipe.from.r.Dump(m.str)
-		if err != nil {
-			log.Printf("FAIL:DUMP:%s, %v\n", m.str, err)
+		dump := pipe.from.client.Dump(m.str)
+		if dump.Err() != nil {
+			log.Printf("FAIL:DUMP:%s, %v\n", m.str, dump.Err())
 		}
-		if len(data) == 0 {
+		if len(dump.Val()) == 0 {
 			continue
 		}
-		_, err = pipe.to.r.Restore(m.str, 0, data)
+		_, err := pipe.to.client.Restore(m.str, 0, dump.Val()).Result()
 		if err != nil {
 			log.Printf("FAIL:RESTORE:%s, %v\n", m.str, err)
 		}
 	}
-}
-
-func (serv *Redis_Server) Connect() error {
-	err := serv.r.ConnectNonBlock(serv.host, uint(serv.port))
-	if err != nil {
-		log.Fatal("Connect: Connecting to host/port: ", err)
-	}
-	if serv.pass != "" {
-		_, err = serv.r.Auth(serv.pass)
-		if err != nil {
-			log.Fatal("Connect: password incorrect: ", err)
-		}
-	}
-	_, err = serv.r.Select(int64(serv.db))
-	if err != nil {
-		log.Fatal("Connect: select db failure: ", err)
-	}
-	return nil
-}
-
-// Create a "pipe" between both redis servers
-func (pipe *Redis_Pipe) ConnectBoth() error {
-	err := pipe.from.Connect()
-	if err != nil {
-		log.Fatal("ConnectBoth: Connecting to \"from\" host/port: ", err)
-	}
-	err = pipe.to.Connect()
-	if err != nil {
-		log.Fatal("ConnectBoth: Connecting to \"to\" host/port: ", err)
-	}
-	return nil
 }
 
 func (pipe *Redis_Pipe) Init() ([]Redis_Pipe, chan Op) {
@@ -85,9 +54,6 @@ func (pipe *Redis_Pipe) Init() ([]Redis_Pipe, chan Op) {
 		pipes[i].keys = pipe.keys
 		pipes[i].from, _ = rhost_copy(pipe.from)
 		pipes[i].to, _ = rhost_copy(pipe.to)
-
-		/* connect to both redii */
-		pipes[i].ConnectBoth()
 	}
 
 	ch := make(chan Op, pipe.threads)

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	goredis "gopkg.in/redis.v4"
 	"log"
-	"menteslibres.net/gosexy/redis"
 	"strconv"
 	"strings"
 )
@@ -58,7 +57,6 @@ func rhost_copy(r *Redis_Server) (*Redis_Server, error) {
 	}
 	c := goredis.NewClient(opts)
 	rs := &Redis_Server{
-		r:      redis.New(),
 		client: c,
 		host:   r.host,
 		port:   r.port,

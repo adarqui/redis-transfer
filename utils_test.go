@@ -29,7 +29,7 @@ func TestParseURI(t *testing.T) {
 
 	s3 := "redis://localhost:6370"
 	a3, _ := parseURI(s3)
-	e3 := &Redis_Server{nil, nil, "localhost", 6370, 0, ""}
+	e3 := &Redis_Server{nil, "localhost", 6370, 0, ""}
 	assertFieldsEqual(t, e3, a3)
 }
 
@@ -60,7 +60,7 @@ func TestRedisURIParsingWithDB(t *testing.T) {
 func TestRHost_Split(t *testing.T) {
 	s := "localhost:6370:0:password"
 	actual, _ := rhost_split(s)
-	expected := &Redis_Server{nil, nil, "localhost", 6370, 0, "password"}
+	expected := &Redis_Server{nil, "localhost", 6370, 0, "password"}
 
 	assertFieldsEqual(t, expected, actual)
 }
