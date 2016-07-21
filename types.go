@@ -23,8 +23,8 @@ type Redis_Server struct {
 }
 
 const (
-  OP_NOP = 0
-  OP_DIE = iota
+	OP_NOP = 0
+	OP_DIE = iota
 )
 
 type Op struct {

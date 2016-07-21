@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/cheggaaa/pb"
 	"io/ioutil"
 	"log"
 	"os"
@@ -181,4 +182,50 @@ func (pipe *Redis_Pipe) Keys() chan redisKey {
 	}
 
 	return keys
+}
+
+func RunTransferArgs(from, to, keys string, threads int) {
+
+	if threads <= 0 {
+		log.Fatal("Main: threads must be > 0")
+	}
+
+	pipe := New(from, to, keys, threads)
+	pipes, ch := pipe.Init()
+
+	// Provides us with a channel that returns keys from redis or from a file
+	keyChan := pipes[0].Keys()
+
+	count := len(keyChan)
+	bar := pb.StartNew(count)
+	bar.ShowPercent = true
+	bar.ShowBar = true
+	bar.ShowCounters = true
+	bar.ShowTimeLeft = true
+	bar.ShowSpeed = true
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		t := <-totalKeyCount
+		bar.Total = int64(t)
+	}()
+
+	for v := range keyChan {
+		op := Op{string(v), OP_NOP, nil}
+		ch <- op
+		bar.Increment()
+	}
+
+	for i := 0; i < pipe.threads; i++ {
+		repch := make(chan bool, 1)
+		op := Op{"", OP_DIE, repch}
+		ch <- op
+		_ = <-repch
+	}
+
+	wg.Wait()
+
+	bar.Finish()
+	log.Println("Done.")
 }
