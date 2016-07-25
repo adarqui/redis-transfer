@@ -1,5 +1,7 @@
 # redis-transfer
 
+[![Build Status](https://travis-ci.org/adarqui/redis-transfer.svg?branch=master)](https://travis-ci.org/adarqui/redis-transfer)
+
 Concurrent bulk transfer of keys from one redis server to another.
 
 ![](./assets/gopher.png)
