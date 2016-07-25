@@ -13,3 +13,14 @@ go:
 matrix:
   allow_failures:
     - go: tip
+
+notifications:
+  irc:
+    channels:
+      - "chat.freenode.net#jumping"
+    on_success: always # [always|never|change] default: always
+    on_failure: always # default: always
+    use_notice: true
+    skip_join: true
+    template:
+      - "%{commit}: %{message} %{build_url}"
