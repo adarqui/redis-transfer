@@ -25,7 +25,7 @@ func New(from, to, keys string, threads int) *Redis_Pipe {
 	return pipe
 }
 
-func (pipe *Redis_Pipe) TransferThread(i int, ch chan Op) {
+func (pipe *Redis_Pipe) TransferThread(i int, ch chan Op, replace bool) {
 	for m := range ch {
 		if m.code == OP_DIE {
 			// force children to exit, just reply true & vaporize this go routine
@@ -39,18 +39,22 @@ func (pipe *Redis_Pipe) TransferThread(i int, ch chan Op) {
 		if len(dump.Val()) == 0 {
 			continue
 		}
-		_, err := pipe.to.client.Restore(m.str, 0, dump.Val()).Result()
+		var err error
+		if replace {
+			_, err = pipe.to.client.RestoreReplace(m.str, 0, dump.Val()).Result()
+		} else {
+			_, err = pipe.to.client.Restore(m.str, 0, dump.Val()).Result()
+		}
 		if err != nil {
+			// TODO FIXME
+			// Need to record the transfer result (duplicated or other errors),
+			// and output the count of keys transferred successfully in the end.
 			// log.Printf("FAIL:RESTORE:%s, %v\n", m.str, err)
-			// TODO FIXME: Eventually we will provide a way of handling errors here.
-			// RESTORE errors will occur if the key already exists on the target redis server.
-			// So these errors are harmless. If we add a --replace flag, then we can also pass
-			// this attribute on to RESTORE so that keys are always overwritten.
 		}
 	}
 }
 
-func (pipe *Redis_Pipe) Init() ([]Redis_Pipe, chan Op) {
+func (pipe *Redis_Pipe) Init(replace bool) ([]Redis_Pipe, chan Op) {
 
 	pipes := make([]Redis_Pipe, pipe.threads)
 
@@ -64,7 +68,7 @@ func (pipe *Redis_Pipe) Init() ([]Redis_Pipe, chan Op) {
 
 	for i := 0; i < pipe.threads; i++ {
 		_i := i
-		go pipes[_i].TransferThread(_i, ch)
+		go pipes[_i].TransferThread(_i, ch, replace)
 	}
 
 	return pipes, ch
@@ -154,14 +158,14 @@ func (pipe *Redis_Pipe) Keys() chan redisKey {
 	return keys
 }
 
-func RunTransferArgs(from, to, keys string, threads int) {
+func RunTransferArgs(from, to, keys string, threads int, replace bool) {
 
 	if threads <= 0 {
 		log.Fatal("Main: threads must be > 0")
 	}
 
 	pipe := New(from, to, keys, threads)
-	pipes, ch := pipe.Init()
+	pipes, ch := pipe.Init(replace)
 
 	// Provides us with a channel that returns keys from redis or from a file
 	keyChan := pipes[0].Keys()

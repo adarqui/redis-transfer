@@ -2,8 +2,9 @@ package main
 
 import (
 	"log"
-	"os"
 	"strconv"
+
+	flag "github.com/spf13/pflag"
 )
 
 func init() {
@@ -11,18 +12,24 @@ func init() {
 }
 
 func main() {
+	var replace bool
+	var help bool
+	flag.BoolVarP(&replace, "replace", "r", false, "whether replace existed keys")
+	flag.BoolVarP(&help, "help", "h", false, "help")
+	flag.Parse()
 
-	if len(os.Args) < 5 {
+	args := flag.Args()
+	if len(args) < 4 || help {
 		usage()
 	}
 
-	from := os.Args[1]
-	to := os.Args[2]
-	keys := os.Args[3]
-	threads, err := strconv.Atoi(os.Args[4])
+	from := args[0]
+	to := args[1]
+	keys := args[2]
+	threads, err := strconv.Atoi(args[3])
 	if err != nil {
 		log.Fatal("Main: threads conversion error: ", err)
 	}
 
-	RunTransferArgs(from, to, keys, threads)
+	RunTransferArgs(from, to, keys, threads, replace)
 }
