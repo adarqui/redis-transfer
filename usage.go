@@ -34,8 +34,7 @@ func usage() {
  * examples:
    redis-transfer localhost:6379 remotehost:6379:1:password "migrate:*" 50
    redis-transfer redis://localhost:6379 redis://user:password@remotehost?db=1 "migrate:*" 50
-   redis-transfer localhost:6379 remotehost:6379 "migrate:*" 50 --replace
-`)
+   redis-transfer localhost:6379 remotehost:6379 "migrate:*" 50 --replace`)
 
 	os.Exit(1)
 }
