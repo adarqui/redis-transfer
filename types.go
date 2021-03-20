@@ -6,13 +6,13 @@ import (
 )
 
 type Redis_Pipe struct {
-	from    *Redis_Server
-	to      *Redis_Server
+	from    *RedisServer
+	to      *RedisServer
 	threads int
 	keys    string
 }
 
-type Redis_Server struct {
+type RedisServer struct {
 	client *goredis.Client
 	host   string
 	port   int

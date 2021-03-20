@@ -60,8 +60,8 @@ func (pipe *Redis_Pipe) Init(replace bool) ([]Redis_Pipe, chan Op) {
 
 	for i := 0; i < pipe.threads; i++ {
 		pipes[i].keys = pipe.keys
-		pipes[i].from, _ = rhost_copy(pipe.from)
-		pipes[i].to, _ = rhost_copy(pipe.to)
+		pipes[i].from, _ = rHostCopy(pipe.from)
+		pipes[i].to, _ = rHostCopy(pipe.to)
 	}
 
 	ch := make(chan Op, pipe.threads)

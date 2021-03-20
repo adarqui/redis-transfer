@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-func parseRedisURI(s string) (server *Redis_Server, err error) {
+func parseRedisURI(s string) (server *RedisServer, err error) {
 	// "redis://x:password@host.name:123?db=0"
 	// "redis://x:password@host.name:123"
 
@@ -51,7 +51,7 @@ func parseRedisURI(s string) (server *Redis_Server, err error) {
 		}
 	}
 
-	return &Redis_Server{host: host, port: port, db: db, pass: password}, nil
+	return &RedisServer{host: host, port: port, db: db, pass: password}, nil
 }
 
 // source: https://gobyexample.com/collection-functions
