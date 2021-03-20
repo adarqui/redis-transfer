@@ -4,59 +4,73 @@ import (
 	"fmt"
 	goredis "gopkg.in/redis.v4"
 	"log"
+	"net"
 	"strconv"
 	"strings"
 )
 
-func parseURI(host string) (server *Redis_Server, err error) {
+func parseURI(host string) (server *RedisServer, err error) {
 	if strings.HasPrefix(host, "redis://") {
 		server, err = parseRedisURI(host)
 	} else {
-		server, err = rhost_split(host)
+		server, err = rHostSplit(host)
 	}
 	return
 }
 
-func rhost_split(host string) (*Redis_Server, error) {
-	tokens := strings.Split(host, ":")
-	if len(tokens) < 2 {
-		log.Fatal("rhost_split: Needs <host:port[:dbnum:[pass]]>")
+func rHostSplit(host string) (*RedisServer, error) {
+	var tokens []string
+	if strings.HasPrefix(host, "[") {
+		// ipv6
+		host = host[1:]
+		tokens = strings.SplitN(host, "]:", 2)
+		if len(tokens) != 2 {
+			log.Fatal("rHostSplit: Needs <[host]:port> for IPv6 host")
+		}
+		host = tokens[0]
+		tokens = strings.Split(tokens[1], ":")
+	} else {
+		// IPv4
+		tokens = strings.Split(host, ":")
+		if len(tokens) < 2 {
+			log.Fatal("rHostSplit: Needs <host:port[:dbnum:[pass]]>")
+		}
+		host = tokens[0]
+		tokens = tokens[1:]
 	}
-
-	host = tokens[0]
-	port, err := strconv.Atoi(tokens[1])
+	port, err := strconv.Atoi(tokens[0])
 	if err != nil {
-		log.Fatal("rhost_split: port conversion error: ", err)
+		log.Fatal("rHostSplit: port conversion error: ", err)
 	}
 
-	serv := new(Redis_Server)
+	serv := new(RedisServer)
 	serv.host = host
 	serv.port = port
 
-	len_tokens := len(tokens)
-	if len_tokens > 2 {
-		db, err := strconv.Atoi(tokens[2])
+	lenTokens := len(tokens)
+	if lenTokens > 1 {
+		db, err := strconv.Atoi(tokens[1])
 		if err != nil {
-			log.Fatal("rhost_split: db conversion error: ", err)
+			log.Fatal("rHostSplit: db conversion error: ", err)
 		}
 		serv.db = db
 	}
 
-	if len_tokens > 3 {
-		serv.pass = tokens[3]
+	if lenTokens > 2 {
+		serv.pass = tokens[2]
 	}
 
 	return serv, nil
 }
 
-func rhost_copy(r *Redis_Server) (*Redis_Server, error) {
+func rHostCopy(r *RedisServer) (*RedisServer, error) {
 	opts := &goredis.Options{
-		Addr:     fmt.Sprintf("%s:%d", r.host, r.port),
+		Addr:     fmt.Sprintf(net.JoinHostPort(r.host, strconv.Itoa(r.port))),
 		Password: r.pass,
 		DB:       r.db,
 	}
 	c := goredis.NewClient(opts)
-	rs := &Redis_Server{
+	rs := &RedisServer{
 		client: c,
 		host:   r.host,
 		port:   r.port,
@@ -66,6 +80,6 @@ func rhost_copy(r *Redis_Server) (*Redis_Server, error) {
 	return rs, nil
 }
 
-func redisToString(s *Redis_Server) string {
-	return fmt.Sprintf("<redis://%s:%d?db=%d>", s.host, s.port, s.db)
+func redisToString(s *RedisServer) string {
+	return fmt.Sprintf("<redis://%s?db=%d>", net.JoinHostPort(s.host, strconv.Itoa(s.port)), s.db)
 }
